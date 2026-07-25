@@ -1,0 +1,6 @@
+{
+  "name": "Placement24/7 - Landing Page & Lead CRM",
+  "description": "Professional banking and financial services landing page and lead management CRM with telecaller portal, admin analytics, and Google Sheets integration.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
