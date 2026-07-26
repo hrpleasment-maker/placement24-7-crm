@@ -1,7 +1,4 @@
-
-import type { VercelRequest, VercelResponse } from '@vercel/node';
-
-export default function handler(req: VercelRequest, res: VercelResponse) {
+export default function handler(req: any, res: any) {
   if (req.method !== 'POST') {
     return res.status(405).json({
       success: false,
@@ -11,7 +8,7 @@ export default function handler(req: VercelRequest, res: VercelResponse) {
 
   const { username, password } = req.body || {};
 
-  // Admin Login
+  // ADMIN LOGIN
   if (username === 'admin' && password === 'admin123') {
     return res.status(200).json({
       success: true,
@@ -25,7 +22,7 @@ export default function handler(req: VercelRequest, res: VercelResponse) {
     });
   }
 
-  // Telecaller Accounts
+  // TELECALLER LOGIN
   const telecallers = [
     {
       id: 'tc-1',
@@ -53,10 +50,12 @@ export default function handler(req: VercelRequest, res: VercelResponse) {
     },
   ];
 
+  const loginUsername = String(username || '').toLowerCase();
+
   const user = telecallers.find(
     (t) =>
-      (t.username.toLowerCase() === String(username).toLowerCase() ||
-        t.email.toLowerCase() === String(username).toLowerCase()) &&
+      (t.username.toLowerCase() === loginUsername ||
+        t.email.toLowerCase() === loginUsername) &&
       t.password === password
   );
 
