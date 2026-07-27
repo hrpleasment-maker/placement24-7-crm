@@ -1,230 +1,105 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
+import { createClient } from '@supabase/supabase-js';
 
-type Telecaller = {
-  id: string;
-  name: string;
-  username: string;
-  phone: string;
-  email: string;
-  password: string;
-  status: string;
-  assignedLeads: number;
-  convertedLeads: number;
-};
+const supabase = createClient(
+  process.env.SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
 
-// Server memory store
-// Existing telecallers
-const globalStore = globalThis as typeof globalThis & {
-  __placement247Telecallers?: Telecaller[];
-};
-
-if (!globalStore.__placement247Telecallers) {
-  globalStore.__placement247Telecallers = [
-    {
-      id: 'tc-1',
-      name: 'Rahul Sharma',
-      username: 'rahul',
-      phone: '',
-      email: '',
-      password: 'rahul123',
-      status: 'active',
-      assignedLeads: 0,
-      convertedLeads: 0,
-    },
-    {
-      id: 'tc-2',
-      name: 'Priya Singh',
-      username: 'priya',
-      phone: '',
-      email: '',
-      password: 'priya123',
-      status: 'active',
-      assignedLeads: 0,
-      convertedLeads: 0,
-    },
-  ];
-}
-
-export default function handler(
+export default async function handler(
   req: VercelRequest,
   res: VercelResponse
 ) {
-  const telecallers = globalStore.__placement247Telecallers!;
 
-  // =========================
-  // GET — TELECALLER LIST
-  // =========================
-
+  // ===========================
+  // GET
+  // ===========================
   if (req.method === 'GET') {
-    return res.status(200).json({
-      success: true,
-      telecallers,
-    });
-  }
 
-  // =========================
-  // POST — CREATE TELECALLER
-  // =========================
+    const { data, error } = await supabase
+      .from('telecallers')
+      .select('*')
+      .order('created_at', { ascending: false });
 
-  if (req.method === 'POST') {
-    try {
-      let body: any = req.body || {};
-
-      if (typeof body === 'string') {
-        try {
-          body = JSON.parse(body);
-        } catch {
-          return res.status(400).json({
-            success: false,
-            message: 'Invalid JSON request body.',
-          });
-        }
-      }
-
-      const name = String(
-        body.name || body.full_name || ''
-      ).trim();
-
-      const username = String(
-        body.username || ''
-      )
-        .trim()
-        .toLowerCase();
-
-      const password = String(
-        body.password || ''
-      ).trim();
-
-      const phone = String(
-        body.phone || ''
-      ).trim();
-
-      const email = String(
-        body.email || ''
-      ).trim();
-
-      // Required
-      if (!name) {
-        return res.status(400).json({
-          success: false,
-          message: 'Full Name is required.',
-        });
-      }
-
-      if (!username) {
-        return res.status(400).json({
-          success: false,
-          message: 'Username is required.',
-        });
-      }
-
-      if (!password) {
-        return res.status(400).json({
-          success: false,
-          message: 'Password is required.',
-        });
-      }
-
-      if (password.length < 4) {
-        return res.status(400).json({
-          success: false,
-          message: 'Password must be at least 4 characters.',
-        });
-      }
-
-      // Check duplicate username
-      const existing = telecallers.find(
-        (tc) => tc.username === username
-      );
-
-      if (existing) {
-        return res.status(409).json({
-          success: false,
-          message: `Username "${username}" already exists.`,
-        });
-      }
-
-      // Create new telecaller
-      const newTelecaller: Telecaller = {
-        id: `tc-${Date.now()}`,
-        name,
-        username,
-        phone,
-        email,
-        password,
-        status: 'active',
-        assignedLeads: 0,
-        convertedLeads: 0,
-      };
-
-      // IMPORTANT:
-      // Save into current server store
-      telecallers.push(newTelecaller);
-
-      console.log(
-        'New Telecaller Created:',
-        newTelecaller.name
-      );
-
-      return res.status(201).json({
-        success: true,
-        message: 'Telecaller created successfully.',
-        telecaller: newTelecaller,
-      });
-    } catch (error) {
-      console.error(
-        'Create telecaller error:',
-        error
-      );
-
+    if (error) {
       return res.status(500).json({
         success: false,
-        message:
-          'Server error while creating telecaller.',
+        message: error.message,
       });
     }
-  }
-
-  // =========================
-  // DELETE
-  // =========================
-
-  if (req.method === 'DELETE') {
-    const id =
-      req.query.id ||
-      req.body?.id;
-
-    if (!id) {
-      return res.status(400).json({
-        success: false,
-        message: 'Telecaller ID is required.',
-      });
-    }
-
-    const index = telecallers.findIndex(
-      (tc) => tc.id === id
-    );
-
-    if (index === -1) {
-      return res.status(404).json({
-        success: false,
-        message: 'Telecaller not found.',
-      });
-    }
-
-    const deleted =
-      telecallers.splice(index, 1)[0];
 
     return res.status(200).json({
       success: true,
-      message: 'Telecaller deleted successfully.',
-      telecaller: deleted,
+      telecallers: data,
     });
   }
 
-  // =========================
-  // METHOD NOT ALLOWED
-  // =========================
+  // ===========================
+  // POST
+  // ===========================
+  if (req.method === 'POST') {
+
+    const {
+      name,
+      username,
+      password,
+      phone,
+      email,
+    } = req.body;
+
+    const { data, error } = await supabase
+      .from('telecallers')
+      .insert([
+        {
+          name,
+          username: username.toLowerCase(),
+          password,
+          phone,
+          email,
+          status: 'active',
+          assigned_leads: 0,
+          converted_leads: 0,
+        },
+      ])
+      .select()
+      .single();
+
+    if (error) {
+      return res.status(500).json({
+        success: false,
+        message: error.message,
+      });
+    }
+
+    return res.status(201).json({
+      success: true,
+      telecaller: data,
+    });
+  }
+
+  // ===========================
+  // DELETE
+  // ===========================
+  if (req.method === 'DELETE') {
+
+    const { id } = req.query;
+
+    const { error } = await supabase
+      .from('telecallers')
+      .delete()
+      .eq('id', id);
+
+    if (error) {
+      return res.status(500).json({
+        success: false,
+        message: error.message,
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+    });
+  }
 
   return res.status(405).json({
     success: false,
