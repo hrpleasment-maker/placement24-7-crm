@@ -82,7 +82,14 @@ export default async function handler(
   // ===========================
   if (req.method === 'DELETE') {
 
-    const { id } = req.query;
+    const id = String(req.query.id || '');
+
+if (!id) {
+  return res.status(400).json({
+    success: false,
+    message: 'Telecaller ID required',
+  });
+}
 
     const { error } = await supabase
       .from('telecallers')
