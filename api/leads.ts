@@ -1,5 +1,5 @@
-import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { createClient } from '@supabase/supabase-js';
+import type { VercelRequest, VercelResponse } from "@vercel/node";
+import { createClient } from "@supabase/supabase-js";
 
 const supabase = createClient(
   process.env.SUPABASE_URL!,
@@ -10,32 +10,35 @@ export default async function handler(
   req: VercelRequest,
   res: VercelResponse
 ) {
-  // =========================
-  // GET ALL LEADS
-  // =========================
-  if (req.method === 'GET') {
-    const { data, error } = await supabase
-      .from('leads')
-      .select('*')
-      .order('created_at', { ascending: false });
+  // GET
+  if (req.method === "GET") {
+    const assignedTo = req.query.assignedTo as string | undefined;
+
+    let query = supabase.from("leads").select("*");
+
+    if (assignedTo) {
+      query = query.eq("assigned_to", assignedTo);
+    }
+
+    const { data, error } = await query.order("created_at", {
+      ascending: false,
+    });
 
     if (error) {
       return res.status(500).json({
         success: false,
-        message: error.message,
+        error: error.message,
       });
     }
 
-    return res.status(200).json({
+    return res.json({
       success: true,
       leads: data,
     });
   }
 
-  // =========================
-  // CREATE LEAD
-  // =========================
-  if (req.method === 'POST') {
+  // POST
+  if (req.method === "POST") {
     const {
       customer_name,
       mobile,
@@ -45,7 +48,7 @@ export default async function handler(
     } = req.body;
 
     const { data, error } = await supabase
-      .from('leads')
+      .from("leads")
       .insert([
         {
           customer_name,
@@ -53,7 +56,6 @@ export default async function handler(
           district,
           product,
           assigned_to,
-          status: 'Pending',
         },
       ])
       .select()
@@ -62,11 +64,11 @@ export default async function handler(
     if (error) {
       return res.status(500).json({
         success: false,
-        message: error.message,
+        error: error.message,
       });
     }
 
-    return res.status(201).json({
+    return res.json({
       success: true,
       lead: data,
     });
@@ -74,6 +76,6 @@ export default async function handler(
 
   return res.status(405).json({
     success: false,
-    message: 'Method Not Allowed',
+    message: "Method Not Allowed",
   });
 }
