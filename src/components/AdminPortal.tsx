@@ -36,9 +36,12 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
   onLogout,
 }) => {
   const [leads, setLeads] = useState<Lead[]>([]);
-  const [telecallers, setTelecallers] = useState<TelecallerUser[]>(
-    []
-  );
+
+const [qualification, setQualification] = useState("");
+
+const [currentWork, setCurrentWork] = useState("");
+
+const [telecallers, setTelecallers] = useState<TelecallerUser[]>([]);
   const [loading, setLoading] = useState(true);
 
   const [activeTab, setActiveTab] = useState<
