@@ -1,4 +1,49 @@
-export default function handler(req: any, res: any) {
+import type { VercelRequest, VercelResponse } from '@vercel/node';
+
+type Telecaller = {
+  id: string;
+  name: string;
+  username: string;
+  phone: string;
+  email: string;
+  password: string;
+  status: string;
+  assignedLeads: number;
+  convertedLeads: number;
+};
+
+const globalStore = globalThis as typeof globalThis & {
+  __placement247Telecallers?: Telecaller[];
+};
+
+if (!globalStore.__placement247Telecallers) {
+  globalStore.__placement247Telecallers = [
+    {
+      id: 'tc-1',
+      name: 'Rahul Sharma',
+      username: 'rahul',
+      phone: '',
+      email: 'rahul@placement247.com',
+      password: 'rahul123',
+      status: 'active',
+      assignedLeads: 0,
+      convertedLeads: 0,
+    },
+    {
+      id: 'tc-2',
+      name: 'Priya Singh',
+      username: 'priya',
+      phone: '',
+      email: 'priya@placement247.com',
+      password: 'priya123',
+      status: 'active',
+      assignedLeads: 0,
+      convertedLeads: 0,
+    },
+  ];
+}
+
+export default function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {
     return res.status(405).json({
       success: false,
@@ -11,9 +56,7 @@ export default function handler(req: any, res: any) {
   const loginUsername = String(username || '').trim().toLowerCase();
   const loginPassword = String(password || '');
 
-  // =========================
-  // ADMIN LOGIN
-  // =========================
+  // Admin Login
   if (
     (loginUsername === 'admin' ||
       loginUsername === 'admin@placement247.com') &&
@@ -24,72 +67,18 @@ export default function handler(req: any, res: any) {
       user: {
         id: 'admin-1',
         name: 'Super Admin',
-        email: 'admin@placement247.com',
         role: 'admin',
         username: 'admin',
+        email: 'admin@placement247.com',
       },
     });
   }
 
-  // =========================
-  // TEST TELECALLER
-  // =========================
-  if (
-    loginUsername === 'testcaller01' &&
-    loginPassword === 'test123'
-  ) {
-    return res.status(200).json({
-      success: true,
-      user: {
-        id: 'tc-test-01',
-        name: 'Test Telecaller',
-        email: 'testcaller01@placement247.com',
-        phone: '',
-        role: 'telecaller',
-        username: 'testcaller01',
-      },
-    });
-  }
-
-  // =========================
-  // DEMO TELECALLERS
-  // =========================
-  const telecallers = [
-    {
-      id: 'tc-1',
-      name: 'Rahul Sharma',
-      email: 'rahul@placement247.com',
-      phone: '+91 98123 45678',
-      username: 'rahul',
-      password: 'telecaller123',
-    },
-    {
-      id: 'tc-2',
-      name: 'Priya Singh',
-      email: 'priya@placement247.com',
-      phone: '+91 98234 56789',
-      username: 'priya',
-      password: 'telecaller123',
-    },
-    {
-      id: 'tc-3',
-      name: 'Amit Kumar',
-      email: 'amit@placement247.com',
-      phone: '+91 98345 67890',
-      username: 'amit',
-      password: 'telecaller123',
-    },
-  ];
-
-  // =========================
-  // FIND TELECALLER
-  // =========================
-  const user = telecallers.find(
+  // Telecaller Login
+  const user = globalStore.__placement247Telecallers!.find(
     (t) =>
-      (
-        t.username.toLowerCase() === loginUsername ||
-        t.email.toLowerCase() === loginUsername
-      ) &&
+      (t.username.toLowerCase() === loginUsername ||
+        t.email.toLowerCase() === loginUsername) &&
       t.password === loginPassword
   );
 
@@ -99,17 +88,14 @@ export default function handler(req: any, res: any) {
       user: {
         id: user.id,
         name: user.name,
+        username: user.username,
         email: user.email,
         phone: user.phone,
         role: 'telecaller',
-        username: user.username,
       },
     });
   }
 
-  // =========================
-  // INVALID LOGIN
-  // =========================
   return res.status(401).json({
     success: false,
     message: 'Invalid username or password',
