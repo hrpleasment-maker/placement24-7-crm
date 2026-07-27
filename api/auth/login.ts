@@ -8,8 +8,17 @@ export default function handler(req: any, res: any) {
 
   const { username, password } = req.body || {};
 
+  const loginUsername = String(username || '').trim().toLowerCase();
+  const loginPassword = String(password || '');
+
+  // =========================
   // ADMIN LOGIN
-  if (username === 'admin' && password === 'admin123') {
+  // =========================
+  if (
+    (loginUsername === 'admin' ||
+      loginUsername === 'admin@placement247.com') &&
+    loginPassword === 'admin123'
+  ) {
     return res.status(200).json({
       success: true,
       user: {
@@ -22,7 +31,29 @@ export default function handler(req: any, res: any) {
     });
   }
 
-  // TELECALLER LOGIN
+  // =========================
+  // TEST TELECALLER
+  // =========================
+  if (
+    loginUsername === 'testcaller01' &&
+    loginPassword === 'test123'
+  ) {
+    return res.status(200).json({
+      success: true,
+      user: {
+        id: 'tc-test-01',
+        name: 'Test Telecaller',
+        email: 'testcaller01@placement247.com',
+        phone: '',
+        role: 'telecaller',
+        username: 'testcaller01',
+      },
+    });
+  }
+
+  // =========================
+  // DEMO TELECALLERS
+  // =========================
   const telecallers = [
     {
       id: 'tc-1',
@@ -50,13 +81,16 @@ export default function handler(req: any, res: any) {
     },
   ];
 
-  const loginUsername = String(username || '').toLowerCase();
-
+  // =========================
+  // FIND TELECALLER
+  // =========================
   const user = telecallers.find(
     (t) =>
-      (t.username.toLowerCase() === loginUsername ||
-        t.email.toLowerCase() === loginUsername) &&
-      t.password === password
+      (
+        t.username.toLowerCase() === loginUsername ||
+        t.email.toLowerCase() === loginUsername
+      ) &&
+      t.password === loginPassword
   );
 
   if (user) {
@@ -73,6 +107,9 @@ export default function handler(req: any, res: any) {
     });
   }
 
+  // =========================
+  // INVALID LOGIN
+  // =========================
   return res.status(401).json({
     success: false,
     message: 'Invalid username or password',
