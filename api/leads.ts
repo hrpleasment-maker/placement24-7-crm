@@ -10,8 +10,12 @@ export default async function handler(
   req: VercelRequest,
   res: VercelResponse
 ) {
-  // GET
+
+  // ==========================
+  // GET LEADS
+  // ==========================
   if (req.method === "GET") {
+
     const assignedTo = req.query.assignedTo as string | undefined;
 
     let query = supabase.from("leads").select("*");
@@ -37,14 +41,19 @@ export default async function handler(
     });
   }
 
-  // POST
+  // ==========================
+  // ADD LEAD
+  // ==========================
   if (req.method === "POST") {
+
     const {
       customer_name,
       mobile,
       district,
       product,
       assigned_to,
+      qualification,
+      current_work
     } = req.body;
 
     const { data, error } = await supabase
@@ -56,8 +65,43 @@ export default async function handler(
           district,
           product,
           assigned_to,
+          qualification,
+          current_work,
+          status: "Pending"
         },
       ])
+      .select()
+      .single();
+
+    if (error) {
+      return res.status(500).json({
+        success: false,
+        error: error.message,
+      });
+    }
+
+    return res.json({
+      success: true,
+      lead: data,
+    });
+  }
+
+  // ==========================
+  // UPDATE STATUS
+  // ==========================
+  if (req.method === "PUT") {
+
+    const {
+      id,
+      status
+    } = req.body;
+
+    const { data, error } = await supabase
+      .from("leads")
+      .update({
+        status
+      })
+      .eq("id", id)
       .select()
       .single();
 
