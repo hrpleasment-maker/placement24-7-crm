@@ -18,7 +18,12 @@ import {
   Printer,
 } from 'lucide-react';
 
-import { Lead, LEAD_STATUS_LIST, TelecallerUser } from '../types';
+import {
+  Lead,
+  LEAD_STATUS_LIST,
+  TelecallerUser,
+} from '../types';
+
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import { GoogleSheetsModal } from './GoogleSheetsModal';
@@ -27,9 +32,13 @@ interface AdminPortalProps {
   onLogout: () => void;
 }
 
-export const AdminPortal: React.FC<AdminPortalProps> = ({ onLogout }) => {
+export const AdminPortal: React.FC<AdminPortalProps> = ({
+  onLogout,
+}) => {
   const [leads, setLeads] = useState<Lead[]>([]);
-  const [telecallers, setTelecallers] = useState<TelecallerUser[]>([]);
+  const [telecallers, setTelecallers] = useState<TelecallerUser[]>(
+    []
+  );
   const [loading, setLoading] = useState(true);
 
   const [activeTab, setActiveTab] = useState<
@@ -47,11 +56,18 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onLogout }) => {
   const [selectedTelecallerFilter, setSelectedTelecallerFilter] =
     useState('All');
 
-  const [selectedLeadIds, setSelectedLeadIds] = useState<string[]>([]);
-  const [batchAssignTelecaller, setBatchAssignTelecaller] = useState('');
+  const [selectedLeadIds, setSelectedLeadIds] = useState<string[]>(
+    []
+  );
 
-  const [showGoogleSheetsModal, setShowGoogleSheetsModal] = useState(false);
-  const [showAddTelecallerModal, setShowAddTelecallerModal] = useState(false);
+  const [batchAssignTelecaller, setBatchAssignTelecaller] =
+    useState('');
+
+  const [showGoogleSheetsModal, setShowGoogleSheetsModal] =
+    useState(false);
+
+  const [showAddTelecallerModal, setShowAddTelecallerModal] =
+    useState(false);
 
   const [newTcData, setNewTcData] = useState({
     name: '',
@@ -132,7 +148,8 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onLogout }) => {
     },
   ]);
 
-  const [offerModalCandidate, setOfferModalCandidate] = useState<any>(null);
+  const [offerModalCandidate, setOfferModalCandidate] =
+    useState<any>(null);
 
   const [config, setConfig] = useState({
     googleSheetsWebhookUrl: '',
@@ -144,38 +161,47 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onLogout }) => {
     address: '',
   });
 
-  // =========================================================
+  // ============================================================
   // LOAD ADMIN DATA
-  // =========================================================
+  // ============================================================
 
   const fetchData = async () => {
     setLoading(true);
 
     try {
-      const [leadsRes, tcRes, configRes] = await Promise.all([
-        fetch('/api/leads', {
-          method: 'GET',
-          cache: 'no-store',
-        }),
+      const cacheBust = Date.now();
 
-        fetch(`/api/telecallers?t=${Date.now()}`, {
-          method: 'GET',
-          cache: 'no-store',
-          headers: {
-            Accept: 'application/json',
-            'Cache-Control': 'no-cache',
-          },
-        }),
+      const [leadsRes, tcRes, configRes] =
+        await Promise.all([
+          fetch(`/api/leads?t=${cacheBust}`, {
+            method: 'GET',
+            cache: 'no-store',
+            headers: {
+              Accept: 'application/json',
+            },
+          }),
 
-        fetch('/api/config/google-sheets', {
-          method: 'GET',
-          cache: 'no-store',
-        }),
-      ]);
+          fetch(`/api/telecallers?t=${cacheBust}`, {
+            method: 'GET',
+            cache: 'no-store',
+            headers: {
+              Accept: 'application/json',
+            },
+          }),
 
-      // -------------------------
-      // LEADS
-      // -------------------------
+          fetch(
+            `/api/config/google-sheets?t=${cacheBust}`,
+            {
+              method: 'GET',
+              cache: 'no-store',
+              headers: {
+                Accept: 'application/json',
+              },
+            }
+          ),
+        ]);
+
+      // ---------------- LEADS ----------------
 
       try {
         const leadsData = await leadsRes.json();
@@ -186,18 +212,19 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onLogout }) => {
         ) {
           setLeads(leadsData.leads);
         }
-      } catch {
-        console.warn('Could not load leads.');
+      } catch (error) {
+        console.warn('Could not load leads.', error);
       }
 
-      // -------------------------
-      // TELECALLERS
-      // -------------------------
+      // ---------------- TELECALLERS ----------------
 
       try {
         const tcData = await tcRes.json();
 
-        console.log('GET /api/telecallers response:', tcData);
+        console.log(
+          'Fresh telecaller list from server:',
+          tcData
+        );
 
         if (
           tcData?.success &&
@@ -206,7 +233,8 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onLogout }) => {
           setTelecallers(tcData.telecallers);
         } else {
           console.warn(
-            'Telecaller API did not return a valid telecaller list.'
+            'Telecaller API did not return a valid list.',
+            tcData
           );
         }
       } catch (error) {
@@ -216,9 +244,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onLogout }) => {
         );
       }
 
-      // -------------------------
-      // GOOGLE SHEETS CONFIG
-      // -------------------------
+      // ---------------- GOOGLE SHEETS ----------------
 
       try {
         const confData = await configRes.json();
@@ -232,9 +258,10 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onLogout }) => {
             ...confData.config,
           }));
         }
-      } catch {
+      } catch (error) {
         console.warn(
-          'Could not load Google Sheets config.'
+          'Could not load Google Sheets config.',
+          error
         );
       }
     } catch (error) {
@@ -251,9 +278,9 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onLogout }) => {
     fetchData();
   }, []);
 
-  // =========================================================
+  // ============================================================
   // ADD TELECALLER
-  // =========================================================
+  // ============================================================
 
   const handleAddTelecaller = async (
     e: React.FormEvent
@@ -299,7 +326,6 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onLogout }) => {
             Accept: 'application/json',
             'Cache-Control': 'no-cache',
           },
-          cache: 'no-store',
           body: JSON.stringify({
             name,
             username,
@@ -326,7 +352,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onLogout }) => {
       }
 
       console.log(
-        'POST /api/telecallers response:',
+        'Create telecaller response:',
         {
           status: response.status,
           ok: response.ok,
@@ -335,25 +361,15 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onLogout }) => {
         }
       );
 
-      // -------------------------
-      // SERVER ERROR
-      // -------------------------
-
       if (!response.ok) {
-        const message =
-          data?.message ||
-          `Server error (${response.status}). Please try again.`;
-
         alert(
-          `Failed to add telecaller.\n\n${message}`
+          `Failed to add telecaller.\n\n${
+            data?.message ||
+            `Server error (${response.status}).`
+          }`
         );
-
         return;
       }
-
-      // -------------------------
-      // API FAILED
-      // -------------------------
 
       if (!data?.success) {
         alert(
@@ -362,47 +378,60 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onLogout }) => {
             'Server did not confirm creation.'
           }`
         );
-
         return;
       }
 
-      // =====================================================
-      // IMPORTANT:
-      // ADD NEW TELECALLER DIRECTLY TO CURRENT SCREEN
-      // =====================================================
+      // --------------------------------------------------------
+      // GET NEW TELECALLER FROM API RESPONSE
+      // --------------------------------------------------------
 
       const serverTelecaller =
         data?.telecaller ||
         data?.user ||
-        data?.createdTelecaller ||
+        data?.data ||
         null;
 
-      const newTelecaller =
-        serverTelecaller ||
-        ({
-          id:
-            data?.id ||
-            data?.telecallerId ||
-            `TC-${Date.now()}`,
-          name,
-          username,
-          phone: newTcData.phone.trim(),
-          email: newTcData.email.trim(),
-        } as TelecallerUser);
+      const newTelecaller: any = {
+        id:
+          serverTelecaller?.id ||
+          data?.id ||
+          `TC-${Date.now()}`,
 
-      setTelecallers((prev) => {
-        const alreadyExists = prev.some(
-          (tc) =>
+        name:
+          serverTelecaller?.name ||
+          name,
+
+        username:
+          serverTelecaller?.username ||
+          username,
+
+        phone:
+          serverTelecaller?.phone ||
+          newTcData.phone.trim(),
+
+        email:
+          serverTelecaller?.email ||
+          newTcData.email.trim(),
+      };
+
+      // --------------------------------------------------------
+      // IMMEDIATELY SHOW NEW TELECALLER IN ADMIN PANEL
+      // --------------------------------------------------------
+
+      setTelecallers((previous) => {
+        const exists = previous.some(
+          (tc: any) =>
             tc.username?.toLowerCase() ===
-            username
+              newTelecaller.username?.toLowerCase() ||
+            tc.id === newTelecaller.id
         );
 
-        if (alreadyExists) {
-          return prev;
+        if (exists) {
+          return previous;
         }
 
         return [
-          ...prev,
+          ...previous,
           newTelecaller,
         ];
       });
@@ -411,8 +440,10 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onLogout }) => {
         `Telecaller "${name}" added successfully!`
       );
 
+      // Close modal
       setShowAddTelecallerModal(false);
 
+      // Clear form
       setNewTcData({
         name: '',
         username: '',
@@ -421,11 +452,13 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onLogout }) => {
         password: '',
       });
 
-      // Refresh API data after a short delay.
-      // The newly created telecaller is already shown above.
+      // --------------------------------------------------------
+      // GET FRESH LIST FROM SERVER
+      // --------------------------------------------------------
+
       setTimeout(() => {
         fetchData();
-      }, 500);
+      }, 300);
     } catch (error) {
       console.error(
         'Add telecaller error:',
@@ -441,9 +474,9 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onLogout }) => {
     }
   };
 
-  // =========================================================
+  // ============================================================
   // GOOGLE SHEETS
-  // =========================================================
+  // ============================================================
 
   const handleSaveGoogleSheetsConfig = async (
     webhookUrl: string,
@@ -466,7 +499,10 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onLogout }) => {
 
       const data = await response.json();
 
-      if (!response.ok || !data?.success) {
+      if (
+        !response.ok ||
+        !data?.success
+      ) {
         alert(
           data?.message ||
             'Failed to save configuration.'
@@ -487,13 +523,15 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onLogout }) => {
       setShowGoogleSheetsModal(false);
     } catch (error) {
       console.error(error);
-      alert('Failed to save configuration.');
+      alert(
+        'Failed to save configuration.'
+      );
     }
   };
 
-  // =========================================================
+  // ============================================================
   // DELETE LEAD
-  // =========================================================
+  // ============================================================
 
   const handleDeleteLead = async (
     id: string
@@ -529,9 +567,9 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onLogout }) => {
     }
   };
 
-  // =========================================================
+  // ============================================================
   // BATCH ASSIGN
-  // =========================================================
+  // ============================================================
 
   const handleBatchReassign = async () => {
     if (selectedLeadIds.length === 0) {
@@ -585,15 +623,17 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onLogout }) => {
       setSelectedLeadIds([]);
       setBatchAssignTelecaller('');
 
-      await fetchData();
+      fetchData();
     } catch {
-      alert('Failed to reassign leads.');
+      alert(
+        'Failed to reassign leads.'
+      );
     }
   };
 
-  // =========================================================
+  // ============================================================
   // EXPORT EXCEL
-  // =========================================================
+  // ============================================================
 
   const handleExportExcel = () => {
     if (leads.length === 0) {
@@ -650,9 +690,9 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onLogout }) => {
     );
   };
 
-  // =========================================================
+  // ============================================================
   // EXPORT PDF
-  // =========================================================
+  // ============================================================
 
   const handleExportPDF = () => {
     if (leads.length === 0) {
@@ -706,10 +746,12 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onLogout }) => {
           y = 20;
         }
 
-        const line = `${lead.id} | ${lead.date} | ${lead.name.substring(
-          0,
-          15
-        )} | ${lead.product} | ${lead.assignedTelecaller} | ${lead.status}`;
+        const line =
+          `${lead.id} | ${lead.date} | ` +
+          `${lead.name.substring(0, 15)} | ` +
+          `${lead.product} | ` +
+          `${lead.assignedTelecaller} | ` +
+          `${lead.status}`;
 
         doc.text(line, 14, y);
 
@@ -726,21 +768,23 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onLogout }) => {
     );
   };
 
-  // =========================================================
+  // ============================================================
   // METRICS
-  // =========================================================
+  // ============================================================
 
   const todayStr =
     new Date()
       .toISOString()
       .split('T')[0];
 
-  const totalLeads = leads.length;
+  const totalLeads =
+    leads.length;
 
-  const todayLeads = leads.filter(
-    (lead) =>
-      lead.date === todayStr
-  ).length;
+  const todayLeads =
+    leads.filter(
+      (lead) =>
+        lead.date === todayStr
+    ).length;
 
   const interestedLeads =
     leads.filter(
@@ -784,15 +828,16 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onLogout }) => {
           'Wrong Number'
     ).length;
 
-  // =========================================================
+  // ============================================================
   // FILTER
-  // =========================================================
+  // ============================================================
 
   const filteredLeads =
     leads.filter((lead) => {
       const matchesStatus =
         statusFilter === 'All' ||
-        lead.status === statusFilter;
+        lead.status ===
+          statusFilter;
 
       const matchesTelecaller =
         selectedTelecallerFilter ===
@@ -828,9 +873,9 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onLogout }) => {
       );
     });
 
-  // =========================================================
+  // ============================================================
   // UI
-  // =========================================================
+  // ============================================================
 
   return (
     <div className="min-h-screen bg-slate-950 text-white p-4 sm:p-6 font-sans">
@@ -863,7 +908,6 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onLogout }) => {
                 Master CRM, Telecaller Assignment & Google Sheets Sync Management
               </p>
             </div>
-
           </div>
 
           <div className="flex flex-wrap gap-2">
@@ -901,7 +945,6 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onLogout }) => {
             </button>
 
           </div>
-
         </div>
 
         {/* NAVIGATION */}
@@ -945,7 +988,6 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onLogout }) => {
               icon: Settings,
             },
           ].map((tab) => {
-
             const Icon = tab.icon;
 
             return (
@@ -970,9 +1012,9 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onLogout }) => {
 
         </div>
 
-        {/* ================================================= */}
-        {/* OVERVIEW */}
-        {/* ================================================= */}
+        {/* =====================================================
+            OVERVIEW
+        ===================================================== */}
 
         {activeTab === 'overview' && (
           <div className="space-y-6">
@@ -1023,7 +1065,6 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onLogout }) => {
                   subtitle,
                   color,
                 ]) => (
-
                   <div
                     key={String(title)}
                     className="bg-slate-900 p-4 rounded-2xl border border-slate-800"
@@ -1042,7 +1083,6 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onLogout }) => {
                       {subtitle}
                     </span>
                   </div>
-
                 )
               )}
 
@@ -1137,7 +1177,6 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onLogout }) => {
                     {leads
                       .slice(0, 5)
                       .map((lead) => (
-
                         <tr
                           key={lead.id}
                           className="border-t border-slate-800"
@@ -1164,29 +1203,28 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onLogout }) => {
                           </td>
 
                           <td className="p-3">
-                            {lead.assignedTelecaller}
+                            {
+                              lead.assignedTelecaller
+                            }
                           </td>
 
                           <td className="p-3">
                             {lead.status}
                           </td>
                         </tr>
-
                       ))}
 
                   </tbody>
-
                 </table>
 
               </div>
             </div>
-
           </div>
         )}
 
-        {/* ================================================= */}
-        {/* ALL LEADS */}
-        {/* ================================================= */}
+        {/* =====================================================
+            ALL LEADS
+        ===================================================== */}
 
         {activeTab === 'all-leads' && (
           <div className="space-y-4">
@@ -1219,6 +1257,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onLogout }) => {
                 }
                 className="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs"
               >
+
                 <option value="All">
                   All Statuses
                 </option>
@@ -1247,12 +1286,13 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onLogout }) => {
                 }
                 className="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs"
               >
+
                 <option value="All">
                   All Telecallers
                 </option>
 
                 {telecallers.map(
-                  (tc) => (
+                  (tc: any) => (
                     <option
                       key={tc.id}
                       value={tc.name}
@@ -1263,7 +1303,6 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onLogout }) => {
                 )}
 
               </select>
-
             </div>
 
             <div className="bg-slate-900 border border-amber-500/30 rounded-2xl p-4 flex flex-col sm:flex-row gap-3 justify-between">
@@ -1288,12 +1327,13 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onLogout }) => {
                   }
                   className="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs"
                 >
+
                   <option value="">
                     -- Select Telecaller --
                   </option>
 
                   {telecallers.map(
-                    (tc) => (
+                    (tc: any) => (
                       <option
                         key={tc.id}
                         value={tc.name}
@@ -1324,7 +1364,6 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onLogout }) => {
                 <table className="w-full text-left text-xs">
 
                   <thead className="bg-slate-950 text-slate-400">
-
                     <tr>
                       <th className="p-3">
                         ✓
@@ -1357,14 +1396,12 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onLogout }) => {
                         Action
                       </th>
                     </tr>
-
                   </thead>
 
                   <tbody>
 
                     {filteredLeads.map(
                       (lead) => (
-
                         <tr
                           key={lead.id}
                           className="border-t border-slate-800"
@@ -1384,16 +1421,22 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onLogout }) => {
                                     .checked
                                 ) {
                                   setSelectedLeadIds(
-                                    (prev) => [
+                                    (
+                                      prev
+                                    ) => [
                                       ...prev,
                                       lead.id,
                                     ]
                                   );
                                 } else {
                                   setSelectedLeadIds(
-                                    (prev) =>
+                                    (
+                                      prev
+                                    ) =>
                                       prev.filter(
-                                        (id) =>
+                                        (
+                                          id
+                                        ) =>
                                           id !==
                                           lead.id
                                       )
@@ -1431,7 +1474,9 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onLogout }) => {
                           </td>
 
                           <td className="p-3">
-                            {lead.assignedTelecaller}
+                            {
+                              lead.assignedTelecaller
+                            }
                           </td>
 
                           <td className="p-3">
@@ -1454,7 +1499,6 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onLogout }) => {
                           </td>
 
                         </tr>
-
                       )
                     )}
 
@@ -1470,15 +1514,13 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onLogout }) => {
                 )}
 
               </div>
-
             </div>
-
           </div>
         )}
 
-        {/* ================================================= */}
-        {/* TELECALLERS */}
-        {/* ================================================= */}
+        {/* =====================================================
+            TELECALLERS
+        ===================================================== */}
 
         {activeTab === 'telecallers' && (
           <div className="space-y-6">
@@ -1486,7 +1528,6 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onLogout }) => {
             <div className="flex flex-col sm:flex-row justify-between gap-3">
 
               <div>
-
                 <h3 className="text-base font-bold font-serif">
                   Telecaller Performance & Staff Management
                 </h3>
@@ -1494,7 +1535,6 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onLogout }) => {
                 <p className="text-xs text-slate-400">
                   Manage telecaller accounts and lead performance.
                 </p>
-
               </div>
 
               <button
@@ -1540,7 +1580,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onLogout }) => {
               <div className="grid md:grid-cols-3 gap-6">
 
                 {telecallers.map(
-                  (tc) => {
+                  (tc: any) => {
 
                     const assigned =
                       leads.filter(
@@ -1573,7 +1613,6 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onLogout }) => {
                         : 0;
 
                     return (
-
                       <div
                         key={tc.id}
                         className="bg-slate-900 border border-slate-800 rounded-2xl p-5"
@@ -1620,7 +1659,9 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onLogout }) => {
                             </span>
 
                             <div className="font-bold text-emerald-400">
-                              {completed.length}
+                              {
+                                completed.length
+                              }
                             </div>
                           </div>
 
@@ -1637,24 +1678,21 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onLogout }) => {
                         </div>
 
                       </div>
-
                     );
                   }
                 )}
 
               </div>
-
             )}
 
           </div>
         )}
 
-        {/* ================================================= */}
-        {/* HR */}
-        {/* ================================================= */}
+        {/* =====================================================
+            HR
+        ===================================================== */}
 
         {activeTab === 'hr' && (
-
           <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-x-auto">
 
             <div className="p-5">
@@ -1699,7 +1737,6 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onLogout }) => {
 
                 {employees.map(
                   (employee) => (
-
                     <tr
                       key={employee.id}
                       className="border-t border-slate-800"
@@ -1718,7 +1755,9 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onLogout }) => {
                       </td>
 
                       <td className="p-3">
-                        {employee.department}
+                        {
+                          employee.department
+                        }
                       </td>
 
                       <td className="p-3 text-emerald-400">
@@ -1726,7 +1765,9 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onLogout }) => {
                       </td>
 
                       <td className="p-3">
-                        {employee.attendance}
+                        {
+                          employee.attendance
+                        }
                       </td>
 
                       <td className="p-3 text-emerald-400">
@@ -1734,24 +1775,19 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onLogout }) => {
                       </td>
 
                     </tr>
-
                   )
                 )}
 
               </tbody>
-
             </table>
-
           </div>
-
         )}
 
-        {/* ================================================= */}
-        {/* RECRUITMENT */}
-        {/* ================================================= */}
+        {/* =====================================================
+            RECRUITMENT
+        ===================================================== */}
 
         {activeTab === 'recruitment' && (
-
           <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-x-auto">
 
             <div className="p-5">
@@ -1770,18 +1806,23 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onLogout }) => {
                   <th className="p-3">
                     Candidate ID
                   </th>
+
                   <th className="p-3">
                     Name
                   </th>
+
                   <th className="p-3">
                     Position
                   </th>
+
                   <th className="p-3">
                     Mobile
                   </th>
+
                   <th className="p-3">
                     Status
                   </th>
+
                   <th className="p-3">
                     Action
                   </th>
@@ -1793,7 +1834,6 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onLogout }) => {
 
                 {candidates.map(
                   (candidate) => (
-
                     <tr
                       key={candidate.id}
                       className="border-t border-slate-800"
@@ -1836,24 +1876,19 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onLogout }) => {
                       </td>
 
                     </tr>
-
                   )
                 )}
 
               </tbody>
-
             </table>
-
           </div>
-
         )}
 
-        {/* ================================================= */}
-        {/* REPORTS */}
-        {/* ================================================= */}
+        {/* =====================================================
+            REPORTS
+        ===================================================== */}
 
         {activeTab === 'reports' && (
-
           <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6">
 
             <h3 className="text-lg font-bold font-serif mb-5">
@@ -1911,17 +1946,14 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onLogout }) => {
               </div>
 
             </div>
-
           </div>
-
         )}
 
-        {/* ================================================= */}
-        {/* SETTINGS */}
-        {/* ================================================= */}
+        {/* =====================================================
+            SETTINGS
+        ===================================================== */}
 
         {activeTab === 'settings' && (
-
           <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-5">
 
             <div>
@@ -1945,7 +1977,9 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onLogout }) => {
                 </label>
 
                 <input
-                  value={config.companyName}
+                  value={
+                    config.companyName
+                  }
                   onChange={(e) =>
                     setConfig({
                       ...config,
@@ -2013,7 +2047,8 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onLogout }) => {
                   onChange={(e) =>
                     setConfig({
                       ...config,
-                      email: e.target.value,
+                      email:
+                        e.target.value,
                     })
                   }
                   className="w-full mt-1 bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm"
@@ -2049,19 +2084,16 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onLogout }) => {
               </button>
 
             </div>
-
           </div>
-
         )}
 
       </div>
 
-      {/* ===================================================== */}
-      {/* ADD TELECALLER MODAL */}
-      {/* ===================================================== */}
+      {/* ========================================================
+          ADD TELECALLER MODAL
+      ======================================================== */}
 
       {showAddTelecallerModal && (
-
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/90 backdrop-blur-md">
 
           <div className="bg-slate-900 border border-amber-500/40 rounded-3xl max-w-md w-full p-6 shadow-2xl">
@@ -2087,6 +2119,9 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onLogout }) => {
                     false
                   )
                 }
+                disabled={
+                  addingTelecaller
+                }
                 className="text-slate-400 hover:text-white text-xl"
               >
                 ×
@@ -2101,7 +2136,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onLogout }) => {
               className="space-y-4"
             >
 
-              {/* NAME */}
+              {/* FULL NAME */}
 
               <div>
 
@@ -2112,11 +2147,14 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onLogout }) => {
                 <input
                   type="text"
                   required
-                  value={newTcData.name}
+                  value={
+                    newTcData.name
+                  }
                   onChange={(e) =>
                     setNewTcData({
                       ...newTcData,
-                      name: e.target.value,
+                      name: e.target
+                        .value,
                     })
                   }
                   placeholder="e.g. Vikram Joshi"
@@ -2182,8 +2220,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onLogout }) => {
                 />
 
                 <p className="text-[10px] text-slate-500 mt-1">
-                  Leave empty to use:
-                  telecaller123
+                  Leave empty to use: telecaller123
                 </p>
 
               </div>
@@ -2198,11 +2235,14 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onLogout }) => {
 
                 <input
                   type="text"
-                  value={newTcData.phone}
+                  value={
+                    newTcData.phone
+                  }
                   onChange={(e) =>
                     setNewTcData({
                       ...newTcData,
-                      phone: e.target.value,
+                      phone:
+                        e.target.value,
                     })
                   }
                   placeholder="Optional"
@@ -2221,11 +2261,14 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onLogout }) => {
 
                 <input
                   type="email"
-                  value={newTcData.email}
+                  value={
+                    newTcData.email
+                  }
                   onChange={(e) =>
                     setNewTcData({
                       ...newTcData,
-                      email: e.target.value,
+                      email:
+                        e.target.value,
                     })
                   }
                   placeholder="Optional"
@@ -2268,19 +2311,15 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onLogout }) => {
               </div>
 
             </form>
-
           </div>
-
         </div>
-
       )}
 
-      {/* ===================================================== */}
-      {/* OFFER LETTER */}
-      {/* ===================================================== */}
+      {/* ========================================================
+          OFFER LETTER
+      ======================================================== */}
 
       {offerModalCandidate && (
-
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/90">
 
           <div className="bg-slate-900 border border-amber-500/40 rounded-3xl max-w-lg w-full p-6">
@@ -2330,8 +2369,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onLogout }) => {
               </p>
 
               <p className="mt-2">
-                We are pleased to offer you
-                the position of{' '}
+                We are pleased to offer you the position of{' '}
                 <strong>
                   {
                     offerModalCandidate.post
@@ -2341,8 +2379,8 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onLogout }) => {
               </p>
 
               <p className="mt-3">
-                Monthly Compensation:
-                ₹22,000 - ₹28,000 +
+                Monthly Compensation: ₹22,000
+                - ₹28,000 +
                 Performance Incentives
               </p>
 
@@ -2371,17 +2409,14 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onLogout }) => {
             </div>
 
           </div>
-
         </div>
-
       )}
 
-      {/* ===================================================== */}
-      {/* GOOGLE SHEETS */}
-      {/* ===================================================== */}
+      {/* ========================================================
+          GOOGLE SHEETS
+      ======================================================== */}
 
       {showGoogleSheetsModal && (
-
         <GoogleSheetsModal
           currentUrl={
             config.googleSheetsWebhookUrl
@@ -2398,7 +2433,6 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onLogout }) => {
             )
           }
         />
-
       )}
 
     </div>
