@@ -4,7 +4,7 @@ import { HeroBanner } from './components/HeroBanner';
 import { AboutSection } from './components/AboutSection';
 import { ServicesGrid } from './components/ServicesGrid';
 import { WhyChooseUs } from './components/WhyChooseUs';
-import { LeadFormSection } from './components/LeadFormSection';
+import { NewLeadFormSection as LeadFormSection } from './components/NewLeadFormSection';
 import { ContactSection } from './components/ContactSection';
 import { Footer } from './components/Footer';
 import { ProductDetailModal } from './components/ProductDetailModal';
